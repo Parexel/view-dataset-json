@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 export type Channels = 'ipc-example';
 
 contextBridge.exposeInMainWorld('electron', {
+    openFile: () => ipcRenderer.invoke('dialog:openFile'),
     ipcRenderer: {
         sendMessage(channel: Channels, args: unknown[]) {
             ipcRenderer.send(channel, args);

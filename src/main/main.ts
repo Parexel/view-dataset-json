@@ -1,19 +1,10 @@
 /* eslint global-require: off, no-console: off, promise/always-return: off */
-
-/**
- * This module executes inside of electron's main process. You can start
- * electron renderer process from here and communicate with the other processes
- * through IPC.
- *
- * When running `npm run build` or `npm run build:main`, this file is compiled to
- * `./src/main.js` using webpack. This gives us some performance wins.
- */
 import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
-import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+import openFile from './openFile';
 
 class AppUpdater {
     constructor() {
@@ -90,17 +81,16 @@ const createWindow = async () => {
         }
         if (process.env.START_MINIMIZED) {
             mainWindow.minimize();
-        } else {
+        } else if (process.env.NODE_ENV !== 'development') {
             mainWindow.show();
+        } else {
+            mainWindow.showInactive();
         }
     });
 
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
-
-    const menuBuilder = new MenuBuilder(mainWindow);
-    menuBuilder.buildMenu();
 
     // Open urls in the user's browser
     mainWindow.webContents.setWindowOpenHandler((edata) => {
@@ -111,6 +101,11 @@ const createWindow = async () => {
     // Remove this if your app does not use auto updates
     // eslint-disable-next-line
     new AppUpdater();
+};
+
+const handleFileOpen = async () => {
+    const data = await openFile();
+    return data;
 };
 
 /**
@@ -127,6 +122,7 @@ app.on('window-all-closed', () => {
 
 app.whenReady()
     .then(() => {
+        ipcMain.handle('dialog:openFile', handleFileOpen);
         createWindow();
         app.on('activate', () => {
             // On macOS it's common to re-create a window in the app when the

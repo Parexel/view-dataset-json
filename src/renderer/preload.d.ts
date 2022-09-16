@@ -3,6 +3,7 @@ import { Channels } from 'main/preload';
 declare global {
     interface Window {
         electron: {
+            openFile: () => Promise<object>;
             ipcRenderer: {
                 sendMessage(channel: Channels, args: unknown[]): void;
                 on(
