@@ -3,8 +3,10 @@ import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+import { ReadStream } from 'fs';
 import { resolveHtmlPath } from './util';
 import openFile from './openFile';
+import getMetadata from './getMetadata';
 
 class AppUpdater {
     constructor() {
@@ -15,12 +17,7 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
-
-ipcMain.on('ipc-example', async (event, arg) => {
-    const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
-    console.log(msgTemplate(arg));
-    event.reply('ipc-example', msgTemplate('pong'));
-});
+const openedFiles: { [key: string]: ReadStream } = {};
 
 if (process.env.NODE_ENV === 'production') {
     const sourceMapSupport = require('source-map-support');
@@ -65,6 +62,7 @@ const createWindow = async () => {
         width: 1024,
         height: 728,
         icon: getAssetPath('icon.png'),
+        autoHideMenuBar: true,
         webPreferences: {
             sandbox: false,
             preload: app.isPackaged
@@ -103,9 +101,23 @@ const createWindow = async () => {
     new AppUpdater();
 };
 
-const handleFileOpen = async () => {
-    const data = await openFile();
-    return data;
+const handleFileOpen = async (): Promise<string | undefined> => {
+    const newFile = await openFile();
+    if (newFile !== undefined) {
+        if (newFile.path in Object.keys(openedFiles)) {
+            // Close the existing stream
+            openedFiles[newFile.path].destroy();
+        }
+        openedFiles[newFile.path] = newFile.stream;
+    }
+    return newFile?.path;
+};
+
+const handleGetMetadata = async (
+    _event: Electron.IpcMainInvokeEvent,
+    fileId: string
+) => {
+    getMetadata(fileId);
 };
 
 /**
@@ -123,6 +135,7 @@ app.on('window-all-closed', () => {
 app.whenReady()
     .then(() => {
         ipcMain.handle('dialog:openFile', handleFileOpen);
+        ipcMain.handle('read:getMetadata', handleGetMetadata);
         createWindow();
         app.on('activate', () => {
             // On macOS it's common to re-create a window in the app when the

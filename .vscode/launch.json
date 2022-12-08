@@ -2,6 +2,16 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "TS-Node",
+      "type": "node",
+      "request": "launch",
+      "protocol": "inspector",
+      "runtimeExecutable": "ts-node",
+      "args": [
+            "${workspaceFolder}/src/main/test.ts"
+        ]
+    },
+    {
       "name": "Electron: Main",
       "type": "node",
       "request": "launch",

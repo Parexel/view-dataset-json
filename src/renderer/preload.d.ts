@@ -1,9 +1,11 @@
+import { ItemGroupData } from 'interfaces/datasetJson';
 import { Channels } from 'main/preload';
 
 declare global {
     interface Window {
         electron: {
-            openFile: () => Promise<object>;
+            openFile: () => Promise<string>;
+            getMetadata: (fileId: string) => Promise<ItemGroupData>;
             ipcRenderer: {
                 sendMessage(channel: Channels, args: unknown[]): void;
                 on(

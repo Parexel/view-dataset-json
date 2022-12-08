@@ -5,6 +5,7 @@ module.exports = {
         'import/no-extraneous-dependencies': 'off',
         'import/no-unresolved': 'error',
         'react/react-in-jsx-scope': 'off',
+        'prefer-destructuring': 'off',
     },
     parserOptions: {
         ecmaVersion: 2020,

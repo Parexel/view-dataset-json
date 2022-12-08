@@ -1,73 +1,28 @@
-import { useState } from 'react';
-import { Typography, Box, Stack, Button } from '@mui/material';
-import FileOpenOutlinedIcon from '@mui/icons-material/FileOpenOutlined';
-import CloudDownloadOutlinedIcon from '@mui/icons-material/CloudDownloadOutlined';
+import { useAppSelector } from 'renderer/redux/hooks';
+import Stack from '@mui/material/Stack';
+import Box from '@mui/material/Box';
+import SelectDataset from 'renderer/components/SelectDataset';
+import ViewDataset from 'renderer/components/ViewDataset';
+import Header from 'renderer/components/Header';
 
 const Home = () => {
-    const [data, setData] = useState({});
-    const handleOpenLocal = async () => {
-        const newData = await window.electron.openFile();
-        if (newData !== undefined) {
-            setData(newData);
-        }
-    };
-
-    const handleOpenRemote = async () => {
-        // TODO
-    };
+    const currentView = useAppSelector((state) => state.ui.view);
 
     return (
-        <Box>
-            <Stack
-                spacing={20}
-                direction="row"
-                sx={{ height: '100vh' }}
-                alignItems="center"
-                justifyContent="center"
+        <Stack sx={{ display: 'flex', height: '100vh' }}>
+            <Header />
+            <Box
+                sx={{
+                    paddingTop: '65px',
+                    display: 'flex',
+                    flex: '1 1 auto',
+                    maxHeight: '100%',
+                }}
             >
-                <Button
-                    onClick={handleOpenLocal}
-                    sx={{ width: '200px', height: '200px' }}
-                    color="primary"
-                    variant="contained"
-                    startIcon={
-                        <Stack
-                            alignItems="center"
-                            justifyItems="center"
-                            spacing={2}
-                        >
-                            <FileOpenOutlinedIcon
-                                sx={{ height: '50px', width: '50px' }}
-                            />
-                            <Typography variant="button">
-                                Open Local File
-                            </Typography>
-                        </Stack>
-                    }
-                />
-                <Button
-                    onClick={handleOpenRemote}
-                    sx={{ width: '200px', height: '200px' }}
-                    color="primary"
-                    variant="contained"
-                    startIcon={
-                        <Stack
-                            alignItems="center"
-                            justifyItems="center"
-                            spacing={2}
-                        >
-                            <CloudDownloadOutlinedIcon
-                                sx={{ height: '50px', width: '50px' }}
-                            />
-                            <Typography variant="button">
-                                Open Remote File
-                            </Typography>
-                        </Stack>
-                    }
-                />
-            </Stack>
-            <Typography variant="body1">{Object.keys(data)}</Typography>
-        </Box>
+                {currentView === 'select' && <SelectDataset />}
+                {currentView === 'view' && <ViewDataset />}
+            </Box>
+        </Stack>
     );
 };
 

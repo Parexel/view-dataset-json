@@ -1,16 +1,15 @@
 import { dialog } from 'electron';
 import fs from 'fs';
-import { promisify } from 'util';
 
-const readFile = promisify(fs.readFile);
-
-const openFile = async (): Promise<object | undefined> => {
+const openFile = async (): Promise<
+    { path: string; stream: fs.ReadStream } | undefined
+> => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
         title: 'Open Dataset-JSON file',
     });
     if (!canceled) {
-        const data = await readFile(filePaths[0], { encoding: 'utf8' });
-        return JSON.parse(data);
+        const stream = fs.createReadStream(filePaths[0], { encoding: 'utf8' });
+        return { path: filePaths[0], stream };
     }
     return undefined;
 };
