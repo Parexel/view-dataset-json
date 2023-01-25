@@ -4,6 +4,7 @@ export interface IUi {
 
 export interface IData {
     name: null | string;
+    datasetNames: Array<string>;
 }
 
 export interface IStore {

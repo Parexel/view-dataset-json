@@ -6,6 +6,7 @@ export const ui: IUi = {
 
 export const data: IData = {
     name: null,
+    datasetNames: [],
 };
 
 const initialState: IStore = {

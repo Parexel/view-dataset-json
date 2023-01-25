@@ -17,7 +17,7 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
-const openedFiles: { [key: string]: ReadStream } = {};
+const openedFiles: { [key: string]: string } = {};
 
 if (process.env.NODE_ENV === 'production') {
     const sourceMapSupport = require('source-map-support');
@@ -104,11 +104,7 @@ const createWindow = async () => {
 const handleFileOpen = async (): Promise<string | undefined> => {
     const newFile = await openFile();
     if (newFile !== undefined) {
-        if (newFile.path in Object.keys(openedFiles)) {
-            // Close the existing stream
-            openedFiles[newFile.path].destroy();
-        }
-        openedFiles[newFile.path] = newFile.stream;
+        openedFiles[newFile.path] = newFile.path;
     }
     return newFile?.path;
 };

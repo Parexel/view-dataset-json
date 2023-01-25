@@ -2,7 +2,7 @@ import { useAppSelector } from 'renderer/redux/hooks';
 import Stack from '@mui/material/Stack';
 import Box from '@mui/material/Box';
 import SelectDataset from 'renderer/components/SelectDataset';
-import ViewDataset from 'renderer/components/ViewDataset';
+import ViewFile from 'renderer/components/ViewFile';
 import Header from 'renderer/components/Header';
 
 const Home = () => {
@@ -20,7 +20,7 @@ const Home = () => {
                 }}
             >
                 {currentView === 'select' && <SelectDataset />}
-                {currentView === 'view' && <ViewDataset />}
+                {currentView === 'view' && <ViewFile />}
             </Box>
         </Stack>
     );

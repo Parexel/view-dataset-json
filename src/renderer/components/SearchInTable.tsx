@@ -40,7 +40,7 @@ const SearchInTable: React.FC<ISearchInTableProps> = ({
             const dataOptions: string[] = [];
             header.forEach((column) => {
                 if (column.hidden !== true && column.searchable !== false) {
-                    dataOptions.push(`${column.label}:`);
+                    dataOptions.push(`${column.id}:`);
                 }
             });
             setOptions(dataOptions);
