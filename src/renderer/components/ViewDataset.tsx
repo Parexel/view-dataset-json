@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import Stack from '@mui/material/Stack';
-import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import TablePagination from '@mui/material/TablePagination';
 import {
@@ -12,6 +11,10 @@ import {
 import GeneralTable from 'renderer/components/GeneralTable';
 import ApiService from 'renderer/services/ApiService';
 import { useAppSelector, useAppDispatch } from 'renderer/redux/hooks';
+
+const BUFFER_SIZE = 10000;
+const PAGE_SIZE = 1000;
+const PAGE_BUFFER = 4;
 
 const styles = {
     main: {
@@ -26,12 +29,134 @@ const styles = {
     pagination: {
         display: 'flex',
         flex: '0 1 1%',
-        mb: 2,
         justifyContent: 'flex-start',
     },
 };
 
+interface IData {
+    // Array with actual observations
+    observations: IGeneralTableDataCell[];
+    // The minimal row which is stored in the memory
+    startRow: number;
+    // The maximum row which is stored in the memory
+    endRow: number;
+}
+
 const apiService = new ApiService('remote');
+
+const readAdditionalData = async ({
+    currentPage,
+    rowsPerPage,
+    data,
+    setData,
+    header,
+    fileId,
+    name,
+}: {
+    currentPage: number;
+    rowsPerPage: number;
+    data: IData;
+    setData: React.Dispatch<React.SetStateAction<IData>>;
+    header: IGeneralTableHeaderCell[];
+    fileId: string;
+    name: string;
+}) => {
+    // Check if is is needed to read the next or the previous records or no records at all;
+    let type: 'next' | 'prev';
+    if (Math.max(0, currentPage - PAGE_BUFFER) * rowsPerPage < data.startRow) {
+        // Case when it is needed to read the previous records
+        type = 'prev';
+    } else if (
+        Math.max(0, currentPage + PAGE_BUFFER) * rowsPerPage >
+        data.endRow
+    ) {
+        // Case when it is needed to read the following records
+        type = 'next';
+    } else {
+        return;
+    }
+
+    // The page which will be requested
+    const startPage =
+        Math.floor(
+            ((currentPage + (type === 'prev' ? -PAGE_BUFFER : PAGE_BUFFER)) *
+                rowsPerPage) /
+                PAGE_SIZE
+        ) + 1;
+
+    const newDataRaw = await apiService.getObservations(
+        fileId,
+        name as string,
+        startPage,
+        PAGE_SIZE
+    );
+
+    if (newDataRaw === undefined) {
+        return;
+    }
+
+    let newObservations = newDataRaw.map((item) => {
+        const row: IGeneralTableDataCell = {};
+        item.forEach((value, index) => {
+            row[header[index].id] = value as number | string;
+        });
+        return row;
+    });
+
+    let oldObservations = data.observations;
+
+    let newStartRow = 0;
+    let newEndRow = 0;
+    if (type === 'prev') {
+        newStartRow = (startPage - 1) * rowsPerPage;
+        // Determine if new records overlap with already loaded records
+        if ((startPage - 1) * PAGE_SIZE >= data.startRow) {
+            // Overlap
+            if (newStartRow + BUFFER_SIZE < data.endRow) {
+                // Remove some observations from the old data
+                newEndRow = newStartRow + BUFFER_SIZE;
+                oldObservations = oldObservations.slice(
+                    0,
+                    newStartRow - data.startRow
+                );
+            } else {
+                newEndRow = data.endRow;
+            }
+        } else {
+            // No overlap
+            newEndRow = startPage * PAGE_SIZE;
+            oldObservations = [];
+        }
+        newObservations = newObservations.concat(oldObservations);
+    } else if (type === 'next') {
+        // Case when it is needed to read the following records
+        newEndRow = startPage * PAGE_SIZE;
+        // Determine if new records overlap with already loaded records
+        if ((startPage - 1) * PAGE_SIZE <= data.endRow) {
+            // Overlap
+            if (newEndRow - BUFFER_SIZE > data.startRow) {
+                // Remove some observations from the old data
+                newStartRow = newEndRow - BUFFER_SIZE;
+                oldObservations = oldObservations.slice(
+                    newStartRow - data.startRow
+                );
+            } else {
+                newStartRow = data.startRow;
+            }
+        } else {
+            // No overlap
+            newStartRow = (startPage - 1) * rowsPerPage;
+            oldObservations = [];
+        }
+        newObservations = oldObservations.concat(newObservations);
+    }
+
+    setData({
+        observations: newObservations,
+        startRow: newStartRow,
+        endRow: newEndRow,
+    });
+};
 
 const ViewDataset: React.FC<{ fileId: string }> = ({
     fileId,
@@ -46,55 +171,30 @@ const ViewDataset: React.FC<{ fileId: string }> = ({
         metadata: { name: string; label: string; records: number };
     }>({ header: [], metadata: { name: '', label: '', records: 0 } });
 
-    const [data, setData] = useState<{
-        observations: IGeneralTableDataCell[];
-        startRow: number;
-        endRow: number;
-    }>({ observations: [], startRow: 0, endRow: 0 });
+    const [data, setData] = useState<IData>({
+        observations: [],
+        startRow: 0,
+        endRow: 0,
+    });
 
     // Pagination
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [rowsPerPage, setRowsPerPage] = useState(50);
 
     const handleChangePage = (
         _event: React.MouseEvent<HTMLButtonElement> | null,
         newPage: React.SetStateAction<number>
     ) => {
-        const readMoreData = async (startRow: number) => {
-            const itemData = await apiService.getObservations(
-                fileId,
-                name as string,
-                1,
-                rowsPerPage * 10
-            );
-
-            if (itemData === undefined) {
-                return;
-            }
-
-            const newData = itemData.map((item) => {
-                const row: IGeneralTableDataCell = {};
-                item.forEach((value, index) => {
-                    row[table.header[index].id] = value as number | string;
-                });
-                return row;
-            });
-
-            setData({
-                observations: newData,
-                startRow,
-                endRow: startRow + rowsPerPage * 10,
-            });
-        };
-
         const currentPage = newPage as number;
-        console.log(currentPage, rowsPerPage, data.startRow, data.endRow);
-        if (
-            data.startRow > rowsPerPage * (currentPage - 3) ||
-            data.endRow < rowsPerPage * (currentPage + 3)
-        ) {
-            readMoreData(Math.max(0, rowsPerPage * (currentPage - 3)));
-        }
+        readAdditionalData({
+            currentPage,
+            rowsPerPage,
+            data,
+            setData,
+            header: table.header,
+            fileId,
+            name: name || '',
+        });
         setPage(newPage);
     };
 
@@ -126,7 +226,7 @@ const ViewDataset: React.FC<{ fileId: string }> = ({
                 fileId,
                 name,
                 1,
-                rowsPerPage * 10
+                PAGE_SIZE
             );
 
             if (itemData === undefined) {
@@ -159,7 +259,7 @@ const ViewDataset: React.FC<{ fileId: string }> = ({
                         result = {
                             id: item.name,
                             label: item.label,
-                            hidden: true,
+                            hidden: false,
                             key: true,
                         };
                     } else {
@@ -184,19 +284,22 @@ const ViewDataset: React.FC<{ fileId: string }> = ({
         openDataset();
     }, [name, dispatch, fileId, rowsPerPage]);
 
+    const observationsToShow = data.observations.slice(
+        (page - Math.floor(data.startRow / rowsPerPage)) * rowsPerPage,
+        (page - Math.floor(data.startRow / rowsPerPage) + 1) * rowsPerPage
+    );
+
     return (
         <Stack sx={styles.main}>
-            <Box sx={styles.table}>
-                <GeneralTable
-                    title={table.metadata.name}
-                    data={data.observations}
-                    header={table.header}
-                    search
-                />
-            </Box>
+            <GeneralTable
+                title={table.metadata.name}
+                data={observationsToShow}
+                header={table.header}
+                search
+            />
             <Paper sx={styles.pagination}>
                 <TablePagination
-                    rowsPerPageOptions={[10, 250, 500]}
+                    rowsPerPageOptions={[50, 100, 250, 500]}
                     sx={{ mr: 2, borderRadius: 0 }}
                     component="div"
                     count={table.metadata.records}

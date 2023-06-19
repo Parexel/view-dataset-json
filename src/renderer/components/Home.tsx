@@ -9,7 +9,7 @@ const Home = () => {
     const currentView = useAppSelector((state) => state.ui.view);
 
     return (
-        <Stack sx={{ display: 'flex', height: '100vh' }}>
+        <Stack sx={{ display: 'flex', height: '100%', minHeight: '100%' }}>
             <Header />
             <Box
                 sx={{
